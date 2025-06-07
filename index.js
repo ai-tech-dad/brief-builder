@@ -441,36 +441,39 @@ app.post('/slack/interactive', verifySlackRequest, async (req, res) => {
     const budget = values.budget.budget_input.value || 'Not specified';
     const notes = values.additional_notes.notes_input.value || 'None';
     
-    // Format the brief
+    // Format the brief with much better design
     const formattedBrief = `
-# Creative Brief: ${projectName}
+✨ **CREATIVE BRIEF** ✨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Client:** ${client}
-**Created by:** <@${payload.user.id}>
-**Date:** ${new Date().toLocaleDateString()}
+🎯 **${projectName.toUpperCase()}**
 
----
+👤 **Client:** ${client}
+📝 **Created by:** <@${payload.user.id}>
+📅 **Date:** ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 
-## Target Audience
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎭 **WHO ARE WE TALKING TO?**
 ${audience}
 
-## Objectives
+🚀 **WHAT ARE WE TRYING TO ACHIEVE?**
 ${objectives}
 
-## Deliverables
+📦 **WHAT ARE WE CREATING?**
 ${deliverables}
 
-## Timeline
+⏰ **WHEN DO WE NEED IT?**
 ${timeline}
 
-## Budget
+💰 **WHAT'S OUR BUDGET?**
 ${budget}
 
-## Additional Notes
+${notes !== 'None' ? `📋 **ADDITIONAL NOTES & REQUIREMENTS**
 ${notes}
 
----
-*This brief was created using /briefbuilder*
+` : ''}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ *Brief created with /briefbuilder - Let's make something amazing!* ⚡
     `.trim();
     
     // Get the original channel where the command was run
