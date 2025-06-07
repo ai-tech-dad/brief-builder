@@ -3,8 +3,11 @@ const { WebClient } = require('@slack/web-api');
 const crypto = require('crypto');
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Store raw body for signature verification
+app.use('/briefbuilder', express.raw({ type: 'application/x-www-form-urlencoded' }));
+app.use('/slack/interactive', express.raw({ type: 'application/x-www-form-urlencoded' }));
+app.use('/slack/actions', express.raw({ type: 'application/x-www-form-urlencoded' }));
 
 // These will come from your Slack app settings
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET;
@@ -16,7 +19,7 @@ const slack = new WebClient(SLACK_BOT_TOKEN);
 function verifySlackRequest(req, res, next) {
   const signature = req.headers['x-slack-signature'];
   const timestamp = req.headers['x-slack-request-timestamp'];
-  const body = JSON.stringify(req.body);
+  const body = req.body.toString();
   
   const time = Math.floor(new Date().getTime() / 1000);
   if (Math.abs(time - timestamp) > 300) {
@@ -32,6 +35,10 @@ function verifySlackRequest(req, res, next) {
   if (signature !== mySignature) {
     return res.status(400).send('Invalid signature');
   }
+  
+  // Parse the body after verification
+  const urlencoded = new URLSearchParams(body);
+  req.body = Object.fromEntries(urlencoded);
   
   next();
 }
