@@ -7,7 +7,6 @@ const app = express();
 // Store raw body for signature verification
 app.use('/briefbuilder', express.raw({ type: 'application/x-www-form-urlencoded' }));
 app.use('/slack/interactive', express.raw({ type: 'application/x-www-form-urlencoded' }));
-app.use('/slack/actions', express.raw({ type: 'application/x-www-form-urlencoded' }));
 
 // These will come from your Slack app settings
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET;
@@ -391,9 +390,43 @@ app.post('/briefbuilder', verifySlackRequest, async (req, res) => {
   }
 });
 
-// Handle form submission
+// Handle form submission and button clicks
 app.post('/slack/interactive', verifySlackRequest, async (req, res) => {
   const payload = JSON.parse(req.body.payload);
+  
+  // Handle button clicks (like sharing to channel)
+  if (payload.type === 'block_actions' && payload.actions[0].action_id === 'share_brief') {
+    // Respond to Slack immediately to avoid timeout
+    res.status(200).send();
+    
+    const data = JSON.parse(payload.actions[0].value);
+    
+    try {
+      await slack.chat.postMessage({
+        channel: data.channel,
+        text: 'New Creative Brief',
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: '📋 **New Creative Brief Created**'
+            }
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: '```' + data.brief + '```'
+            }
+          }
+        ]
+      });
+    } catch (error) {
+      console.error('Error sharing brief:', error);
+    }
+    return; // Important: exit here so we don't continue to the form submission handler
+  }
   
   if (payload.type === 'view_submission' && payload.view.callback_id === 'brief_submission') {
     const values = payload.view.state.values;
@@ -489,44 +522,6 @@ ${notes}
     } catch (error) {
       console.error('Error posting message:', error);
       res.status(500).send('Error creating brief');
-    }
-  }
-});
-
-// Handle button clicks (like sharing to channel)
-app.post('/slack/actions', verifySlackRequest, async (req, res) => {
-  const payload = JSON.parse(req.body.payload);
-  
-  if (payload.actions[0].action_id === 'share_brief') {
-    // Respond to Slack immediately to avoid timeout
-    res.status(200).send();
-    
-    const data = JSON.parse(payload.actions[0].value);
-    
-    try {
-      await slack.chat.postMessage({
-        channel: data.channel,
-        text: 'New Creative Brief',
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '📋 **New Creative Brief Created**'
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '```' + data.brief + '```'
-            }
-          }
-        ]
-      });
-    } catch (error) {
-      console.error('Error sharing brief:', error);
-      // Could send a follow-up message to the user about the error
     }
   }
 });
